@@ -205,6 +205,27 @@ export async function logout() {
   redirect('/login')  
 }
 
+export async function healthcheck() {
+  try {
+    const response = await fetch('http://127.0.0.1:8000/health_check', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const result = await response.json();
+    console.log("Connection is good");
+
+    return result.code;
+
+  }catch(error){
+    console.log("The server is offline, please try again later.");
+
+    return "The server is offline, please try again later.";
+  }
+}
+
 export async function testLogin(
   prevState: string | undefined,
   formData: FormData,
@@ -212,36 +233,41 @@ export async function testLogin(
   const username = formData.get('username');
   const password = formData.get('password');
 
-  try {
-    const response = await fetch('http://127.0.0.1:8000/login', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        "username":username,
-        "password":password,
-      }),
-    });
-
-    const result = await response.json();
-    console.log(result);
-
-    if(result.code=='200'){
-      const oneHour = 60 * 60 * 1000
-      
-      cookies().set('godriver_jwt', result.token, { secure: true, expires: Date.now() + oneHour })
-      cookies().set('godriver_username', result.result.users.username, { secure: true, expires: Date.now() + oneHour })
-      cookies().set('godriver_roles', result.result.roles.id, { secure: true, expires: Date.now() + oneHour })  
-
-      redirect("/dashboard");
-    }else{
-      return result.message;
+  const health_check = await healthcheck();
+  if(health_check=='200'){
+    try {
+      const response = await fetch('http://127.0.0.1:8000/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          "username":username,
+          "password":password,
+        }),
+      });
+  
+      const result = await response.json();
+      console.log(result);
+  
+      if(result.code=='200'){
+        const oneHour = 60 * 60 * 1000
+        
+        cookies().set('godriver_jwt', result.token, { secure: true, expires: Date.now() + oneHour })
+        cookies().set('godriver_username', result.result.users.username, { secure: true, expires: Date.now() + oneHour })
+        cookies().set('godriver_roles', result.result.roles.id, { secure: true, expires: Date.now() + oneHour })  
+  
+        redirect("/dashboard");
+      }else{
+        return result.message;
+      }
+    } catch (error) {
+      console.log(error);
+      throw error;    
     }
-  } catch (error) {
-    console.log(error);
-    throw error;    
-  } 
+  }else{
+    return health_check;
+  }
 }
 
 export async function login(formData: FormData) {
