@@ -4,7 +4,7 @@ import { Button } from '@/app/ui/button';
 import Breadcrumbs from '@/app/ui/invoices/breadcrumbs';
 import { updateProducts } from '@/app/lib/actions';
 
-async function getData(id) {
+async function getData(id: string) {
     const response = await fetch('https://api.restful-api.dev/objects/'+id)
     
     if (!response.ok) {

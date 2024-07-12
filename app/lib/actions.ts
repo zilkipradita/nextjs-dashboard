@@ -4,6 +4,9 @@ import { z } from 'zod';
 import { sql } from '@vercel/postgres';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { signIn } from '@/app/auth';
+import { AuthError } from 'next-auth';
+import { cookies } from 'next/headers'
 
 const FormSchema = z.object({
   id: z.string(),
@@ -17,6 +20,13 @@ const CreateInvoice = FormSchema.omit({ id: true, date: true });
 const UpdateInvoice = FormSchema.omit({ id: true, date: true });
 
 export async function createInvoice(formData: FormData) {
+  const oneDay = 24 * 60 * 60 * 1000
+  const oneHour = 60 * 60 * 1000
+  const tenMinutes = 60 * 10 * 1000
+
+  cookies().set('jwt', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c', { secure: true, expires: Date.now() + tenMinutes })
+  cookies().set('name', 'value', { secure: true, expires: Date.now() + tenMinutes })
+
   const { customerId, amount, status } = CreateInvoice.parse({
         customerId: formData.get('customerId'),
         amount: formData.get('amount'),
@@ -157,4 +167,117 @@ export async function deleteProducts(id: string) {
 
   revalidatePath('/dashboard/products');
   redirect('/dashboard/products');
+}
+
+export async function authenticate(
+  prevState: string | undefined,
+  formData: FormData,
+) {
+  try {
+    await signIn('credentials', formData);
+  } catch (error) {
+    if (error instanceof AuthError) {
+      switch (error.type) {
+        case 'CredentialsSignin':
+          return 'Invalid credentials.....';
+        default:
+          return 'Something went wrong.';
+      }
+    }
+    throw error;
+  }
+}
+
+export async function logout() {
+  const cookieStore = cookies()
+  const hasCookie = cookieStore.has('godriver_jwt')
+  
+  if (hasCookie== true){
+      cookies().delete('godriver_jwt')
+      cookies().delete('godriver_username')
+      cookies().delete('godriver_roles')
+
+      console.log('has cookies and deleted')
+  }else{
+      console.log('cookies does not exist')   
+  }
+
+  redirect('/login')  
+}
+
+export async function testLogin(
+  prevState: string | undefined,
+  formData: FormData,
+) {
+  const username = formData.get('username');
+  const password = formData.get('password');
+
+  try {
+    const response = await fetch('http://127.0.0.1:8000/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        "username":username,
+        "password":password,
+      }),
+    });
+
+    const result = await response.json();
+    console.log(result);
+
+    if(result.code=='200'){
+      const oneHour = 60 * 60 * 1000
+      
+      cookies().set('godriver_jwt', result.token, { secure: true, expires: Date.now() + oneHour })
+      cookies().set('godriver_username', result.result.users.username, { secure: true, expires: Date.now() + oneHour })
+      cookies().set('godriver_roles', result.result.roles.id, { secure: true, expires: Date.now() + oneHour })  
+
+      redirect("/dashboard");
+    }else{
+      return result.message;
+    }
+  } catch (error) {
+    console.log(error);
+    throw error;    
+  } 
+}
+
+export async function login(formData: FormData) {
+  const username = formData.get('username');
+  const password = formData.get('password');
+
+  try {
+    const response = await fetch('http://127.0.0.1:8000/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        "username":username,
+        "password":password,
+      }),
+    });
+
+    const result = await response.json();
+    console.log(result);
+
+    if(result.code=='200'){
+      const oneDay = 24 * 60 * 60 * 1000
+      const oneHour = 60 * 60 * 1000
+      const tenMinutes = 60 * 10 * 1000
+    
+      cookies().set('godriver_jwt', result.token, { secure: true, expires: Date.now() + oneHour })
+      cookies().set('godriver_username', result.result.users.username, { secure: true, expires: Date.now() + oneHour })
+      cookies().set('godriver_roles', result.result.roles.id, { secure: true, expires: Date.now() + oneHour })
+    }
+
+    return result.code;
+
+  } catch (error) {
+
+    console.log(error);
+    return "error";
+  }
 }

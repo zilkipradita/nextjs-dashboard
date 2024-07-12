@@ -1,5 +1,10 @@
 import { UpdateProducts, DeleteProducts, CreateProducts } from '@/app/ui/invoices/buttons';
 import { lusitana } from '@/app/ui/fonts';
+import { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Products',
+};
 
 async function getData() {
     const response = await fetch('https://api.restful-api.dev/objects')

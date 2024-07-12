@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { createProducts } from '@/app/lib/actions';
 
 export default async function Page() {
-  
   return (
     <main>
       <Breadcrumbs
